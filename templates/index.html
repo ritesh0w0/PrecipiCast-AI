@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrecipiCast AI | Rainfall Prediction & Rainwater Harvesting Engine</title>
+    <meta name="description" content="AI-driven daily precipitation forecasting and rainwater harvesting yield estimation using an optimized XGBoost regressor trained on 11 NASA POWER meteorological parameters.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+
+    <div class="app-layout">
+        <!-- Top Navigation / Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon-wrapper">
+                    <i class="ph-bold ph-cloud-rain brand-icon"></i>
+                </div>
+                <div>
+                    <div class="brand-title-row">
+                        <h1 class="brand-name">PrecipiCast <span class="gradient-text">AI</span></h1>
+                        <span class="version-tag">v1.0.0</span>
+                    </div>
+                    <p class="brand-tagline">Meteorological Precipitation Forecasting & Rainwater Harvesting (RWH) Engine</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-label">Model Online</span>
+                </div>
+                <div class="model-badge">
+                    <i class="ph ph-cpu"></i>
+                    <span>XGBoost • 11 NASA Features</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Presets Bar -->
+        <div class="presets-section">
+            <div class="presets-header">
+                <span class="presets-title"><i class="ph ph-lightning"></i> Quick Scenario Presets:</span>
+                <span class="presets-hint">Select a preset to auto-populate meteorological conditions</span>
+            </div>
+            <div class="presets-buttons">
+                <button type="button" class="preset-btn" data-preset="dry">
+                    <i class="ph ph-sun"></i>
+                    <span>Clear & Dry</span>
+                </button>
+                <button type="button" class="preset-btn active" data-preset="default">
+                    <i class="ph ph-cloud-sun"></i>
+                    <span>Humid Tropical (Default)</span>
+                </button>
+                <button type="button" class="preset-btn" data-preset="monsoon">
+                    <i class="ph ph-cloud-rain"></i>
+                    <span>Monsoon Rain</span>
+                </button>
+                <button type="button" class="preset-btn" data-preset="storm">
+                    <i class="ph ph-cloud-lightning"></i>
+                    <span>Tropical Storm</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <main class="main-dashboard">
+            <!-- Left Panel: Input Parameters Form -->
+            <section class="card form-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <i class="ph-bold ph-sliders-horizontal card-icon"></i>
+                        <div>
+                            <h2>Meteorological Parameters</h2>
+                            <p class="card-subtitle">Values from NASA POWER Agroclimatology dataset</p>
+                        </div>
+                    </div>
+                    <button type="button" id="resetBtn" class="action-btn-sm" title="Reset to Defaults">
+                        <i class="ph ph-arrow-counter-clockwise"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <form id="predictionForm" autocomplete="off">
+                    <!-- Solar Radiation Group -->
+                    <div class="form-group-section">
+                        <div class="group-title">
+                            <i class="ph ph-sun-dim"></i> Solar Irradiance
+                        </div>
+                        <div class="input-grid-2">
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="sw_down">SW Downwelling</label>
+                                    <span class="unit-badge">W/m²</span>
+                                </div>
+                                <input type="number" id="sw_down" name="sw_down" step="0.1" value="18.5" required>
+                                <span class="param-code">ALLSKY_SFC_SW_DWN</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="sw_direct">SW Direct Normal</label>
+                                    <span class="unit-badge">W/m²</span>
+                                </div>
+                                <input type="number" id="sw_direct" name="sw_direct" step="0.1" value="10.2" required>
+                                <span class="param-code">ALLSKY_SFC_SW_DNI</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Group -->
+                    <div class="form-group-section">
+                        <div class="group-title">
+                            <i class="ph ph-thermometer-simple"></i> Air Temperatures (@ 2m)
+                        </div>
+                        <div class="input-grid-3">
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="temp_avg">Average Temp</label>
+                                    <span class="unit-badge">°C</span>
+                                </div>
+                                <input type="number" id="temp_avg" name="temp_avg" step="0.1" value="27.5" required>
+                                <span class="param-code">T2M</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="temp_max">Max Temp</label>
+                                    <span class="unit-badge">°C</span>
+                                </div>
+                                <input type="number" id="temp_max" name="temp_max" step="0.1" value="30.1" required>
+                                <span class="param-code">T2M_MAX</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="temp_min">Min Temp</label>
+                                    <span class="unit-badge">°C</span>
+                                </div>
+                                <input type="number" id="temp_min" name="temp_min" step="0.1" value="25.0" required>
+                                <span class="param-code">T2M_MIN</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="temp_dew">Dew Point</label>
+                                    <span class="unit-badge">°C</span>
+                                </div>
+                                <input type="number" id="temp_dew" name="temp_dew" step="0.1" value="24.1" required>
+                                <span class="param-code">T2MDEW</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="temp_wet">Wet Bulb</label>
+                                    <span class="unit-badge">°C</span>
+                                </div>
+                                <input type="number" id="temp_wet" name="temp_wet" step="0.1" value="25.8" required>
+                                <span class="param-code">T2MWET</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="wind_speed">Wind Speed</label>
+                                    <span class="unit-badge">m/s</span>
+                                </div>
+                                <input type="number" id="wind_speed" name="wind_speed" step="0.1" value="2.5" required>
+                                <span class="param-code">WS2M</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moisture & Soil Dynamics -->
+                    <div class="form-group-section">
+                        <div class="group-title">
+                            <i class="ph ph-drop"></i> Moisture & Ground Wetness
+                        </div>
+                        <div class="input-grid-3">
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="humidity_rel">Relative Humidity</label>
+                                    <span class="unit-badge">%</span>
+                                </div>
+                                <input type="number" id="humidity_rel" name="humidity_rel" step="0.1" min="0" max="100" value="85.5" required>
+                                <span class="param-code">RH2M</span>
+                            </div>
+                            <div class="input-field">
+                                <div class="field-label-row">
+                                    <label for="humidity_spec">Specific Humidity</label>
+                                    <span class="unit-badge">g/kg</span>
+                                </div>
+                                <input type="number" id="humidity_spec" name="humidity_spec" step="0.1" value="19.1" required>
+                                <span class="param-code">QV2M</span>
+                            </div>
+                            <div class="input-field highlight-field">
+                                <div class="field-label-row">
+                                    <label for="soil_wetness">Topsoil Wetness</label>
+                                    <span class="unit-badge">0 - 1.0</span>
+                                </div>
+                                <input type="number" id="soil_wetness" name="soil_wetness" step="0.01" min="0" max="1" value="0.85" required>
+                                <span class="param-code key-feature">GWETTOP • 43% Importance</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" id="submitBtn" class="primary-predict-btn">
+                        <span class="btn-text">Execute AI Rainfall Forecast</span>
+                        <i class="ph-bold ph-sparkle btn-icon"></i>
+                        <div class="spinner hidden"></div>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Panel: Prediction Results & RWH Calculator -->
+            <section class="card result-card">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <i class="ph-bold ph-chart-line-up card-icon"></i>
+                        <div>
+                            <h2>Inference & RWH Analysis</h2>
+                            <p class="card-subtitle">Real-time XGBoost inference output</p>
+                        </div>
+                    </div>
+                    <button type="button" id="copyCurlBtn" class="action-btn-sm" title="Copy cURL Command">
+                        <i class="ph ph-code"></i>
+                        <span>cURL</span>
+                    </button>
+                </div>
+
+                <!-- Empty State Placeholder -->
+                <div class="result-placeholder" id="resultPlaceholder">
+                    <div class="radar-pulse-ring">
+                        <i class="ph-thin ph-cloud-rain placeholder-icon"></i>
+                    </div>
+                    <h3>Ready for Prediction</h3>
+                    <p>Adjust the meteorological variables or pick a preset scenario, then click <strong>Execute AI Rainfall Forecast</strong>.</p>
+                </div>
+
+                <!-- Active Result Display -->
+                <div class="result-body hidden" id="resultContent">
+                    <!-- Metric Display Hero -->
+                    <div class="metric-hero-box">
+                        <div class="metric-top-row">
+                            <span class="metric-tag"><i class="ph-fill ph-check-circle"></i> Prediction Verified</span>
+                            <span class="category-badge" id="categoryBadge">Moderate Rain</span>
+                        </div>
+                        <div class="metric-number-wrapper">
+                            <span class="metric-number" id="predictionValue">0.00</span>
+                            <div class="metric-unit-col">
+                                <span class="unit-main">mm</span>
+                                <span class="unit-sub">per 24-hr day</span>
+                            </div>
+                        </div>
+                        <!-- Intensity Bar -->
+                        <div class="intensity-bar-wrapper">
+                            <div class="intensity-track">
+                                <div class="intensity-fill" id="predictionBar"></div>
+                            </div>
+                            <div class="intensity-ticks">
+                                <span>0 mm (None)</span>
+                                <span>10 mm</span>
+                                <span>35 mm</span>
+                                <span>75 mm</span>
+                                <span>100+ mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meteorological Insight -->
+                    <div class="insight-callout" id="insightBox">
+                        <i class="ph-bold ph-info insight-icon"></i>
+                        <div class="insight-content">
+                            <div class="insight-heading" id="insightHeading">Atmospheric Interpretation</div>
+                            <p id="insightText">Evaluating conditions...</p>
+                        </div>
+                    </div>
+
+                    <!-- Rainwater Harvesting (RWH) Calculation Module -->
+                    <div class="rwh-module">
+                        <div class="rwh-module-header">
+                            <div class="rwh-title">
+                                <i class="ph-bold ph-barrel rwh-icon"></i>
+                                <div>
+                                    <h4>Rainwater Harvesting Potential</h4>
+                                    <span class="rwh-formula">Hydrologic Yield: V = P × A × C × η</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rwh-controls-grid">
+                            <div class="rwh-control">
+                                <label for="rwh_area">Catchment Area (Roof m²)</label>
+                                <input type="number" id="rwh_area" value="120" min="10" max="5000" step="5">
+                            </div>
+                            <div class="rwh-control">
+                                <label for="rwh_roof_type">Catchment Material (C)</label>
+                                <select id="rwh_roof_type">
+                                    <option value="0.90" selected>Metal / Corrugated Sheet (0.90)</option>
+                                    <option value="0.85">Reinforced Concrete Flat (0.85)</option>
+                                    <option value="0.80">Asphalt / Shingle (0.80)</option>
+                                    <option value="0.75">Clay / Terracotta Tiles (0.75)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- RWH Stats Metrics -->
+                        <div class="rwh-stats-cards">
+                            <div class="rwh-stat-card">
+                                <span class="rwh-stat-label">Harvestable Volume</span>
+                                <span class="rwh-stat-value" id="rwhLiters">0 L</span>
+                                <span class="rwh-stat-desc" id="rwhM3">0.0 m³</span>
+                            </div>
+                            <div class="rwh-stat-card">
+                                <span class="rwh-stat-label">Household Offset</span>
+                                <span class="rwh-stat-value" id="rwhDays">0 Days</span>
+                                <span class="rwh-stat-desc">Based on 150L/day/person</span>
+                            </div>
+                            <div class="rwh-stat-card">
+                                <span class="rwh-stat-label">Tank Recommendation</span>
+                                <span class="rwh-stat-value" id="rwhTank">Standard</span>
+                                <span class="rwh-stat-desc" id="rwhTankDesc">Modular Buffer</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div class="footer-left">
+                <p><strong>PrecipiCast AI</strong> — NASA POWER Agroclimatology & XGBoost Machine Learning Project</p>
+                <p class="footer-sub">Chronological Temporal Slicing (1995-2020 Train/Val • 2021-2025 Test Block)</p>
+            </div>
+            <div class="footer-links">
+                <a href="/api/info" target="_blank" class="footer-link"><i class="ph ph-file-code"></i> API Info</a>
+                <a href="/health" target="_blank" class="footer-link"><i class="ph ph-activity"></i> Health Probe</a>
+                <a href="https://github.com/ritesh0w0" target="_blank" class="footer-link"><i class="ph ph-github-logo"></i> GitHub</a>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
