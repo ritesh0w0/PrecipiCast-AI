@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const predictionBar = document.getElementById('predictionBar');
     const insightHeading = document.getElementById('insightHeading');
     const insightText = document.getElementById('insightText');
+    const statusLabel = document.querySelector('.status-label');
+    const modelBadgeSpan = document.querySelector('.model-badge span');
 
     // RWH Calculator Elements
     const rwhArea = document.getElementById('rwh_area');
@@ -25,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const rwhTankDesc = document.getElementById('rwhTankDesc');
 
     let currentPredictionMm = 0.0;
+    const isStaticDeploy = window.location.hostname.includes('github.io') || window.location.protocol === 'file:';
+
+    // Update initial status indicators based on hosting environment
+    if (isStaticDeploy) {
+        if (statusLabel) statusLabel.textContent = "Web Engine Online";
+        if (modelBadgeSpan) modelBadgeSpan.textContent = "Client-Side XGBoost • 11 Features";
+    }
 
     // Presets Definition
     const presets = {
@@ -100,6 +109,73 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
+    // Client-Side XGBoost Inference Engine (Used on GitHub Pages and Offline)
+    function predictClientSide(formData) {
+        if (!window.PRECIPICAST_MODEL) {
+            throw new Error("Embedded model weights not available.");
+        }
+        const { base_score, scaler, trees } = window.PRECIPICAST_MODEL;
+        const raw = [
+            formData.sw_down,
+            formData.sw_direct,
+            formData.temp_avg,
+            formData.temp_dew,
+            formData.temp_wet,
+            formData.temp_max,
+            formData.temp_min,
+            formData.humidity_rel,
+            formData.humidity_spec,
+            formData.wind_speed,
+            formData.soil_wetness
+        ];
+
+        // 1. StandardScaler Transformation
+        const scaled = raw.map((val, idx) => (val - scaler.mean[idx]) / scaler.scale[idx]);
+
+        // 2. Ensemble Tree Traversal across 300 Boosting Estimators
+        let total = base_score;
+        for (let i = 0; i < trees.length; i++) {
+            const { l, r, f, c } = trees[i];
+            let node = 0;
+            while (l[node] !== -1) {
+                if (scaled[f[node]] < c[node]) {
+                    node = l[node];
+                } else {
+                    node = r[node];
+                }
+            }
+            total += c[node];
+        }
+
+        // 3. Non-Negative Rectification
+        const predictionMm = Math.max(0.0, total);
+
+        // 4. Intensity Classification
+        let category = "No Rain";
+        let intensityDesc = "Clear skies and dry atmospheric conditions.";
+        if (predictionMm >= 75.0) {
+            category = "Torrential / Storm Rain";
+            intensityDesc = "Severe storm event; monitor catchment overflow buffers.";
+        } else if (predictionMm >= 35.0) {
+            category = "Heavy Rain";
+            intensityDesc = "Intense precipitation; strong rainwater harvesting yields.";
+        } else if (predictionMm >= 10.0) {
+            category = "Moderate Rain";
+            intensityDesc = "Steady, significant rainfall across catchment areas.";
+        } else if (predictionMm >= 0.1) {
+            category = "Light Rain";
+            intensityDesc = "Scattered drizzle or light showers expected.";
+        }
+
+        return {
+            success: true,
+            prediction_mm: parseFloat(predictionMm.toFixed(2)),
+            category: category,
+            intensity_description: intensityDesc,
+            engine: "client-side-xgboost"
+        };
+    }
+
     // Update Rainwater Harvesting (RWH) Calculations
     function updateRwhCalculations() {
         const area = parseFloat(rwhArea.value) || 0;
@@ -156,16 +232,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = getFormData();
 
         try {
-            const response = await fetch('/predict', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            let data = null;
 
-            const data = await response.json();
+            // If on GitHub Pages or static local file, use the in-browser XGBoost engine directly
+            if (isStaticDeploy) {
+                data = predictClientSide(payload);
+            } else {
+                // Otherwise try Flask server first
+                try {
+                    const response = await fetch('/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
 
-            if (!response.ok) {
-                throw new Error(data.error || 'Server rejected inference request');
+                    if (response.ok) {
+                        data = await response.json();
+                    } else {
+                        // Fallback to client-side engine if server returned an error
+                        data = predictClientSide(payload);
+                    }
+                } catch (netErr) {
+                    // Fallback to client-side engine if backend is offline or static
+                    data = predictClientSide(payload);
+                }
             }
 
             // Smooth transition

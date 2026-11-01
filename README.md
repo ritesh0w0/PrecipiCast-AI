@@ -3,6 +3,7 @@
 # 🌧️ PrecipiCast AI
 ### Intelligent Meteorological Precipitation Forecasting & Rainwater Harvesting Engine
 
+[![Live Demo](https://img.shields.io/badge/Demo-GitHub%20Pages-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://ritesh0w0.github.io/PrecipiCast-AI/)
 [![Python Version](https://img.shields.io/badge/Python-3.10%20%7C%203.11-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/Flask-3.0.0-000000?style=for-the-badge&logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-2.0.2-15B886?style=for-the-badge&logo=xgboost&logoColor=white)](https://xgboost.readthedocs.io/)
@@ -14,6 +15,8 @@
 <p align="center">
   <b>An end-to-end Machine Learning and Hydrological Engineering platform that translates 11 satellite-derived meteorological features from NASA POWER into high-accuracy daily precipitation forecasts and actionable rainwater harvesting storage recommendations.</b>
 </p>
+
+### 🌐 [🚀 Try the Live Interactive Demo on GitHub Pages](https://ritesh0w0.github.io/PrecipiCast-AI/)
 
 [Key Features](#-key-features) •
 [Interactive Dashboard](#-interactive-dashboard) •
@@ -357,3 +360,4 @@ This project is open-source and distributed under the [MIT License](LICENSE).
 <div align="center">
   <sub>Built with ❤️ for sustainable climate resilience and rainwater harvesting intelligence.</sub>
 </div>
+
